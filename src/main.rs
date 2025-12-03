@@ -1,25 +1,28 @@
-use std::io::Write;
-#[allow(unused_imports)]
-use std::net::TcpListener;
+pub mod core;
+pub mod types;
+
+use crate::{
+    core::{router::HttpRouter, server::HttpServer, logging::Logging}, 
+    types::{response::HttpResponse, status::StatusCode}
+};
 
 fn main() {
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    println!("Logs from your program will appear here!");
+    let mut router = HttpRouter::new();
+    router.get("/", |_req| {
+        HttpResponse::builder()
+            .status_code(StatusCode::Ok)
+            .build()
+    });
 
-    // TODO: Uncomment the code below to pass the first stage
-    //
-    let listener = TcpListener::bind("127.0.0.1:4221").unwrap();
-    
-    for stream in listener.incoming() {
-        match stream {
-            Ok(mut stream) => {
-                println!("accepted new connection");
-                stream.write("HTTP/1.1 200 OK\r\n\r\n".as_bytes()).unwrap();
-                stream.flush().unwrap();
-            }
-            Err(e) => {
-                println!("error: {}", e);
-            }
-        }
-    }
+    // router.post("/api/v1", |_req| {
+    //     HttpResponse::builder()
+    //         .status_code(StatusCode::Ok)
+    //         .body("{\"message\":\"Hello World!\"}".to_string())
+    //         .header("Content-Type", "application/json")
+    //         .build()
+    // });
+
+    let mut server = HttpServer::new(router);
+    server.enable_logging();
+    server.listen(4221);
 }
