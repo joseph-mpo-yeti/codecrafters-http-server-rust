@@ -42,12 +42,22 @@ impl HttpResponseBuilder {
 
     pub fn file(&mut self, content: Vec<u8>) -> &mut Self {
         self.body = String::from_utf8(content).unwrap_or(String::new());
-        self
+        self.header("Content-Type", "application/octet-stream")
     }
 
     pub fn body(&mut self, body: String) -> &mut Self {
         self.body = body;
         self
+    }
+
+    pub fn json(&mut self, body: String) -> &mut Self {
+        self.body = body;
+        self.header("Content-Type", "application/json")
+    }
+
+    pub fn plain_text(&mut self, body: String) -> &mut Self {
+        self.body = body;
+        self.header("Content-Type", "text/plain")
     }
 
     pub fn header(&mut self, key: &str, value: &str) -> &mut Self {

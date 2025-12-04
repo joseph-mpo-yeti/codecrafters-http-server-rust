@@ -12,31 +12,17 @@ pub fn user_agent(req: HttpRequest, _ctx: &Context) -> HttpResponse {
     let user_agent = req.headers.get("User-Agent").expect("No user agent header found");
     HttpResponse::builder()
         .status_code(StatusCode::Ok)
-        .body(user_agent.to_string())
-        .header("Content-Type", "text/plain")
+        .plain_text(user_agent.to_string())
         .build()
 }
 
 
 pub fn get_str(req: HttpRequest, _ctx: &Context) -> HttpResponse {
     let str = req.path_params.get("str").unwrap().trim().to_string();
-    let encoding_scheme = if let Some(scheme) = req.headers.get("Accept-Encoding"){
-        scheme.clone()
-    } else {
-        String::new()
-    };
-
-    let mut response_builder = HttpResponse::builder()
+    HttpResponse::builder()
         .status_code(StatusCode::Ok)
-        .body(str)
-        .header("Content-Type", "text/plain")
-        .to_owned();
-        
-    if !encoding_scheme.is_empty() && encoding_scheme.eq("gzip") {
-        response_builder.header("Content-Encoding", &encoding_scheme);
-    }
-        
-    response_builder.build()
+        .plain_text(str)
+        .build()
 }
 
 pub fn get_file(req: HttpRequest, ctx: &Context) -> HttpResponse {
@@ -48,7 +34,6 @@ pub fn get_file(req: HttpRequest, ctx: &Context) -> HttpResponse {
         HttpResponse::builder()
             .status_code(StatusCode::Ok)
             .file(content)
-            .header("Content-Type", "application/octet-stream")
             .build()
     } else {
         println!("Failed to read file: {}", filepath);

@@ -4,20 +4,23 @@ use super::router::HttpRouter;
 use crate::core::server::Context;
 use crate::types::response::HttpResponse;
 
+use std::collections::HashSet;
 use std::io::Write;
 use std::{io::Error, sync::Arc};
 use std::net::{TcpStream};
 
 pub struct HttpRequestHandler {
     logging_enabled: bool,
-    router: Arc<HttpRouter>
+    router: Arc<HttpRouter>,
+    enconding_schemes: HashSet<String>
 }
 
 impl HttpRequestHandler {
     pub fn new(router: Arc<HttpRouter>) -> Self {
         Self {
             logging_enabled: false,
-            router: router
+            router: router,
+            enconding_schemes: HashSet::from([String::from("gzip")])
         }
     }
 
@@ -56,7 +59,27 @@ impl HttpRequestHandler {
         }
         let r = request.clone();
         let response = match router.get_handler(&r) {
-            Some(handler) => handler(r, ctx),
+            Some(handler) => {
+                let encoding_schemes = if let Some(scheme) = r.headers.get("Accept-Encoding"){
+                    scheme.split(",").collect()
+                } else {
+                    Vec::new()
+                };
+
+                let schemes: Vec<String> = encoding_schemes.iter()
+                    .map(|m|m.trim().to_string())
+                    .filter(|scheme| self.enconding_schemes.contains(scheme))
+                    .collect();
+
+                let mut res = handler(r, ctx);
+
+                if !schemes.is_empty() {
+                    let scheme = schemes.get(0).unwrap();
+                    res.headers.insert("Content-Encoding".to_string(), scheme.to_owned());
+                }
+
+                res
+            },
             _ => HttpResponse::builder()
                     .status_code(crate::types::status::StatusCode::NotFound)
                     .build(),
@@ -141,6 +164,11 @@ impl HttpRequestHandler {
 
         http_response
     }
+
+    pub fn add_encoding_scheme(&mut self, scheme: &str) {
+        self.enconding_schemes.insert(scheme.to_string());
+    }
+
 }
 
 impl Logging for HttpRequestHandler {
