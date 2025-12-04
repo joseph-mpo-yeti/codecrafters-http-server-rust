@@ -10,7 +10,8 @@ use crate::core::{
     server::{Context, HttpServer},
 };
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut workdir = String::new();
     let args: Vec<String> = env::args().map(|x| x.to_string()).collect();
 
@@ -31,5 +32,5 @@ fn main() {
     server.enable_logging();
 
     // dbg!(&server);
-    server.listen(4221);
+    server.listen(4221).await;
 }
