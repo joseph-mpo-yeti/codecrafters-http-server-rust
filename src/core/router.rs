@@ -83,18 +83,32 @@ impl HttpRouter {
         
         // dbg!(&path_params);
         // dbg!(&path_regex);
-        
-        match self.routes.get_mut(&key) {
-            Some(route) => {
-                route.handlers.insert(method, handler);
-                route.path_params = path_params;
+        if path_regex.is_empty() {
+            match self.routes.get_mut(&key) {
+                Some(route) => {
+                    route.handlers.insert(method, handler);
+                    route.path_params = path_params;
+                }
+                None => {
+                    let mut route = Route::new(method, handler);
+                    route.path_params = path_params;
+                    self.routes.insert( key, route);
+                }
             }
-            None => {
-                let mut route = Route::new(method, handler);
-                route.path_params = path_params;
-                self.routes.insert(if path_regex.is_empty() { key } else { path_regex }, route);
+        } else {
+            match self.routes.get_mut(&path_regex) {
+                Some(route) => {
+                    route.handlers.insert(method, handler);
+                    route.path_params = path_params;
+                }
+                None => {
+                    let mut route = Route::new(method, handler);
+                    route.path_params = path_params;
+                    self.routes.insert( path_regex, route);
+                }
             }
         }
+        
     }
 
     pub fn get_handler(&self, req: &HttpRequest) -> Option<&fn(HttpRequest, &Context) -> HttpResponse> {

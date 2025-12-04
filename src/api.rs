@@ -34,10 +34,30 @@ pub fn get_file(req: HttpRequest, ctx: &Context) -> HttpResponse {
     if let Ok(content) = fs::read(filepath.clone()) {
         println!("succesfully read file: {}", &filepath);
         HttpResponse::builder()
-        .status_code(StatusCode::Ok)
-        .file(content)
-        .header("Content-Type", "application/octet-stream")
-        .build()
+            .status_code(StatusCode::Ok)
+            .file(content)
+            .header("Content-Type", "application/octet-stream")
+            .build()
+    } else {
+        println!("Failed to read file: {}", filepath);
+        HttpResponse::builder()
+            .status_code(StatusCode::NotFound)
+            .build()
+    }
+    
+}
+
+
+pub fn create_file(req: HttpRequest, ctx: &Context) -> HttpResponse {
+    let filename = req.path_params.get("filename").unwrap().trim();
+    println!("filename: {}", filename);
+    let filepath = ctx.workdir.to_string() + MAIN_SEPARATOR_STR + filename;
+    if let Ok(()) = fs::write(filepath.clone(), req.body.as_bytes()) {
+        println!("succesfully read file: {}", &filepath);
+        HttpResponse::builder()
+            .status_code(StatusCode::Created)
+            .header("Content-Type", "application/octet-stream")
+            .build()
     } else {
         println!("Failed to read file: {}", filepath);
         HttpResponse::builder()

@@ -14,6 +14,7 @@ fn main() {
     router.get("/user-agent", api::user_agent);
     router.get("/echo/{str}", api::get_str);
     router.get("/files/{filename}", api::get_file);
+    router.post("/files/{filename}", api::create_file);
 
     let mut server = HttpServer::new(router);
 
