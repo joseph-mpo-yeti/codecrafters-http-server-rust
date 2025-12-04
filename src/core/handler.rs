@@ -1,3 +1,6 @@
+use flate2::Compression;
+use flate2::write::GzEncoder;
+
 use super::logging::Logging;
 use super::parser::Parser;
 use super::router::HttpRouter;
@@ -5,7 +8,7 @@ use crate::core::server::Context;
 use crate::types::response::HttpResponse;
 
 use std::collections::HashSet;
-use std::io::Write;
+use std::io::{BufReader, Write, copy};
 use std::{io::Error, sync::Arc};
 use std::net::{TcpStream};
 
@@ -68,7 +71,7 @@ impl HttpRequestHandler {
 
                 let schemes: Vec<String> = encoding_schemes.iter()
                     .map(|m|m.trim().to_string())
-                    .filter(|scheme| self.enconding_schemes.contains(scheme))
+                    .filter(|scheme| self.enconding_schemes.contains(&scheme.to_lowercase()))
                     .collect();
 
                 let mut res = handler(r, ctx);
@@ -76,6 +79,17 @@ impl HttpRequestHandler {
                 if !schemes.is_empty() {
                     let scheme = schemes.get(0).unwrap();
                     res.headers.insert("Content-Encoding".to_string(), scheme.to_owned());
+                    match scheme.as_str() {
+                        "gzip" => {
+                            let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+                            let mut reader = BufReader::new(res.body.as_bytes());
+                            copy(&mut reader, &mut encoder).unwrap();
+                            let encoded_body = encoder.finish().unwrap_or_default();
+                            res.encoded = encoded_body;
+                            res.body.clear();
+                        },
+                        _ => {}
+                    }
                 }
 
                 res
@@ -118,6 +132,9 @@ impl HttpRequestHandler {
         }
 
         socket.write_all(http_response.as_bytes())?;
+        if response.encoded.len() > 0 {
+            socket.write(&response.encoded)?;
+        }
         socket.flush()?;
         socket.shutdown(std::net::Shutdown::Both)?;
 
@@ -134,8 +151,10 @@ impl HttpRequestHandler {
         if self.logging_enabled() {
             // println!("Response: {:?}", http_response);
         }
-
         socket.write_all(http_response.as_bytes())?;
+        if response.encoded.len() > 0 {
+            socket.write(&response.encoded)?;
+        }
         socket.flush()?;
 
         Ok(())
@@ -153,6 +172,9 @@ impl HttpRequestHandler {
         if response.body.len() > 0 {
             http_response
                 .push_str(format!("Content-Length: {}\r\n", response.body.len()).as_str());
+        } else if response.encoded.len() > 0 {
+            http_response
+                .push_str(format!("Content-Length: {}\r\n", response.encoded.len()).as_str());
         }
 
         // http_response.push_str("Connection: close\r\n\r\n");

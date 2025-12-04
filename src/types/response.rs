@@ -10,6 +10,7 @@ pub struct HttpResponse {
     pub reason: String,
     // pubquery: HashMap<String, String>,
     pub headers: HashMap<String, String>,
+    pub encoded: Vec<u8>
 }
 
 #[derive(Debug, Clone)]
@@ -89,6 +90,7 @@ impl HttpResponseBuilder {
             body: self.body.to_string(),
             reason: status.reason().to_string(),
             headers: self.headers.clone(),
+            encoded: Vec::new()
         }
     }
 }
