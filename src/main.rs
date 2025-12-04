@@ -14,6 +14,14 @@ fn main() {
             .build()
     });
 
+    router.get("/user-agent", |req| {
+        let user_agent = req.headers.get("User-Agent").expect("No user agent header found");
+        HttpResponse::builder()
+            .status_code(StatusCode::Ok)
+            .body(user_agent.to_string())
+            .build()
+    });
+
     router.get("/echo/{str}", |req| {
         let str = req.path_params.get("str").unwrap().trim().to_string();
         HttpResponse::builder()
