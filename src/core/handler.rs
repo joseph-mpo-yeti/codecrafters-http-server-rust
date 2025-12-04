@@ -23,7 +23,7 @@ impl HttpRequestHandler {
     pub fn handle_incoming_request(&self, mut socket: TcpStream) -> Result<(), Error> {
         let start = std::time::Instant::now();
         let parser = Parser::new();
-        let parse_result = parser.parse_http_request(&mut socket);
+        let parse_result = parser.parse_http_request(&mut socket, self.router.clone());
 
         let request = match parse_result {
             Ok(request) => request,
@@ -57,8 +57,8 @@ impl HttpRequestHandler {
         let response = match router.get_handler(&r) {
             Some(handler) => handler(r),
             _ => HttpResponse::builder()
-                .status_code(crate::types::status::StatusCode::NotFound)
-                .build(),
+                    .status_code(crate::types::status::StatusCode::NotFound)
+                    .build(),
         };
 
         self.write_and_close(socket, &response).unwrap();
@@ -128,14 +128,14 @@ impl HttpRequestHandler {
 
         if response.body.len() > 0 {
             http_response
-                .push_str(format!("Content-Length: {}\r\n", response.body.len() + 1).as_str());
+                .push_str(format!("Content-Length: {}\r\n", response.body.len()).as_str());
         }
 
         // http_response.push_str("Connection: close\r\n\r\n");
         http_response.push_str("\r\n");
 
         if response.body.len() > 0 {
-            http_response.push_str(format!("{}\n", response.body).as_str());
+            http_response.push_str(format!("{}", response.body).as_str());
         }
 
         http_response

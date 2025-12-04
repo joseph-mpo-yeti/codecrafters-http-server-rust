@@ -7,7 +7,7 @@ pub struct HttpRequest {
     pub target: String,
     pub version: String,
     pub body: String,
-    // pubquery: HashMap<String, String>,
+    pub path_params: HashMap<String, String>,
     pub headers: HashMap<String, String>,
 }
 
@@ -19,7 +19,7 @@ impl HttpRequest {
         target: String,
         version: String,
         body: String,
-        // query: HashMap<String, String>,
+        path_params: HashMap<String, String>,
         headers: HashMap<String, String>,
     ) -> Self {
         Self {
@@ -28,6 +28,7 @@ impl HttpRequest {
             version,
             headers,
             body,
+            path_params
         }
     }
 }

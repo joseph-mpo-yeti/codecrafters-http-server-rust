@@ -1,9 +1,13 @@
+use regex::Regex;
+
 use crate::core::logging::Logging;
 
+use crate::core::router::HttpRouter;
 use crate::types::method::*;
 use crate::types::request::*;
 
 use std::io::Read;
+use std::sync::Arc;
 use std::{collections::HashMap, io::Error};
 use std::net::TcpStream;
 
@@ -18,7 +22,7 @@ impl Parser {
         }
     }
 
-    pub fn parse_http_request(&self, socket: &mut TcpStream) -> Result<HttpRequest, Error> {
+    pub fn parse_http_request(&self, socket: &mut TcpStream, router: Arc<HttpRouter>) -> Result<HttpRequest, Error> {
         let mut request_content = String::new();
         let mut buf = [0u8; 1024];
         loop {
@@ -77,12 +81,15 @@ impl Parser {
 
                 let headers = self.parse_headers(lines);
                 let body = self.parse_request_body(socket, req, &headers);
+                let path_params = self.parse_path_params(&request_line.1, router.as_ref());
+                // dbg!(&path_params);
 
                 Ok(HttpRequest::new(
                     request_line.0,
                     request_line.1,
                     request_line.2,
                     body,
+                    path_params,
                     headers,
                 ))
             }
@@ -108,10 +115,17 @@ impl Parser {
             _ => HttpRequestMethod::UNKNOWN,
         };
 
+        let mut target = String::from(*collect.get(1).unwrap_or(&""));
+        while target.len() > 1 && target.ends_with("/") {
+            target.pop();
+        }
+
+        let version = String::from(*collect.get(2).unwrap_or(&""));
+
         RequestLine(
             method,
-            String::from(*collect.get(1).unwrap_or(&"")),
-            String::from(*collect.get(2).unwrap_or(&"")),
+            target,
+            version,
         )
     }
 
@@ -175,6 +189,29 @@ impl Parser {
             None => String::new(),
         }
     }
+
+    fn parse_path_params(&self, target: &String, router: &HttpRouter) -> HashMap<String, String> {
+        let mut params = HashMap::new();
+
+        for (path, route) in router.get_routes() {
+            if route.get_path_params().is_empty() {
+                continue;
+            }
+            let reg = Regex::new(path.as_str()).unwrap();
+            if reg.is_match(&target) {
+                // println!("found a match for {} : {}", target, path);
+                let tokens: Vec<String> = target.split("/").filter(|x| !x.is_empty()).map(|x| x.to_string()).collect();
+                // dbg!(&tokens);
+                for (index, param) in route.get_path_params() {
+                    // println!("index: {}, key: {}", index, param);
+                    params.insert(param.clone(), tokens.get(*index-1).unwrap().clone());
+                }
+            }
+        }
+
+        params
+    }
+
 }
 
 impl Logging for Parser {

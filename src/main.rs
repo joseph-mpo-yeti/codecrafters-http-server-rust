@@ -14,6 +14,33 @@ fn main() {
             .build()
     });
 
+    router.get("/echo/{str}", |req| {
+        let str = req.path_params.get("str").unwrap().trim().to_string();
+        HttpResponse::builder()
+            .status_code(StatusCode::Ok)
+            .body(str)
+            .header("Content-Type", "text/plain")
+            .build()
+    });
+
+    router.get("/echo/{name}/{age}", |req| {
+        let name = req.path_params.get("name").unwrap().clone();
+        let age = req.path_params.get("age").unwrap().clone();
+        let mut body = String::from("{\"name\": \"");
+        body.push_str(format!("{}", name).as_str());
+        body.push_str("\", \"age\":\"");
+        body.push_str(format!("{}", age).as_str());
+        body.push_str("\"}");
+
+        HttpResponse::builder()
+            .status_code(StatusCode::Ok)
+            .body(body)
+            .header("Content-Type", "text/plain")
+            .build()
+    });
+
+    // dbg!(&router);
+
     // router.post("/api/v1", |_req| {
     //     HttpResponse::builder()
     //         .status_code(StatusCode::Ok)
