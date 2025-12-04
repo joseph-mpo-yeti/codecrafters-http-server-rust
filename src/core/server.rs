@@ -4,17 +4,27 @@ use super::{handler::HttpRequestHandler, logging::Logging, router::HttpRouter};
 
 use std::net::TcpListener;
 
+
+#[derive(Debug, Default, Clone)]
+pub struct Context {
+    pub workdir: String
+}
+
+
 #[derive(Debug)]
 pub struct HttpServer {
     logging_enabled: bool,
     router: Arc<HttpRouter>,
+    context: Context
 }
+
 
 impl HttpServer {
     pub fn new(router: HttpRouter) -> Self {
         Self {
             logging_enabled: false,
             router: Arc::new(router),
+            context: Context::default()
         }
     }
 
@@ -31,8 +41,9 @@ impl HttpServer {
                     if self.logging_enabled() {
                         handler.enable_logging();
                     }
+                    let ctx = self.context.clone();
                     std::thread::spawn(move || {
-                        let _ = handler.handle_incoming_request(socket);
+                        let _ = handler.handle_incoming_request(socket, &ctx);
                     });
                 }
                 Err(err) => {
@@ -43,6 +54,11 @@ impl HttpServer {
             }
         }
     }
+
+    pub fn set_context(&mut self, ctx: Context) {
+        self.context = ctx;
+    }
+    
 }
 
 impl Logging for HttpServer {

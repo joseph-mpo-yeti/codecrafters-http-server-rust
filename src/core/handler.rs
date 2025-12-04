@@ -1,6 +1,7 @@
 use super::logging::Logging;
 use super::parser::Parser;
 use super::router::HttpRouter;
+use crate::core::server::Context;
 use crate::types::response::HttpResponse;
 
 use std::io::Write;
@@ -9,18 +10,18 @@ use std::net::{TcpStream};
 
 pub struct HttpRequestHandler {
     logging_enabled: bool,
-    router: Arc<HttpRouter>,
+    router: Arc<HttpRouter>
 }
 
 impl HttpRequestHandler {
     pub fn new(router: Arc<HttpRouter>) -> Self {
         Self {
             logging_enabled: false,
-            router: router,
+            router: router
         }
     }
 
-    pub fn handle_incoming_request(&self, mut socket: TcpStream) -> Result<(), Error> {
+    pub fn handle_incoming_request(&self, mut socket: TcpStream, ctx: &Context) -> Result<(), Error> {
         let start = std::time::Instant::now();
         let parser = Parser::new();
         let parse_result = parser.parse_http_request(&mut socket, self.router.clone());
@@ -55,7 +56,7 @@ impl HttpRequestHandler {
         }
         let r = request.clone();
         let response = match router.get_handler(&r) {
-            Some(handler) => handler(r),
+            Some(handler) => handler(r, ctx),
             _ => HttpResponse::builder()
                     .status_code(crate::types::status::StatusCode::NotFound)
                     .build(),

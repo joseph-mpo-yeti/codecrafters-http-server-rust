@@ -17,7 +17,7 @@ pub struct HttpResponseBuilder {
     protocol: String,
     status_code: Option<StatusCode>,
     body: String,
-    headers: HashMap<String, String>,
+    headers: HashMap<String, String>
 }
 
 impl HttpResponseBuilder {
@@ -25,8 +25,8 @@ impl HttpResponseBuilder {
         Self {
             protocol: "HTTP/1.1".to_string(),
             status_code: None,
-            body: "".to_string(),
-            headers: HashMap::new(),
+            body: String::new(),
+            headers: HashMap::new()
         }
     }
 
@@ -37,6 +37,11 @@ impl HttpResponseBuilder {
 
     pub fn protocol(&mut self, protocol: String) -> &mut Self {
         self.protocol = protocol;
+        self
+    }
+
+    pub fn file(&mut self, content: Vec<u8>) -> &mut Self {
+        self.body = String::from_utf8(content).unwrap_or(String::new());
         self
     }
 

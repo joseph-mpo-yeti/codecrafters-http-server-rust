@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-
 use regex::Regex;
 
+use crate::core::server::Context;
 use crate::types::method::*;
 use crate::types::request::*;
 use crate::types::response::*;
@@ -18,27 +18,27 @@ impl HttpRouter {
         }
     }
 
-    pub fn get(&mut self, path: &str, handler: fn(HttpRequest) -> HttpResponse) {
+    pub fn get(&mut self, path: &str, handler: fn(HttpRequest, &Context) -> HttpResponse) {
         self.register(HttpRequestMethod::GET, path, handler);
     }
 
-    pub fn post(&mut self, path: &str, handler: fn(HttpRequest) -> HttpResponse) {
+    pub fn post(&mut self, path: &str, handler: fn(HttpRequest, &Context) -> HttpResponse) {
         self.register(HttpRequestMethod::POST, path, handler);
     }
 
-    pub fn patch(&mut self, path: &str, handler: fn(HttpRequest) -> HttpResponse) {
+    pub fn patch(&mut self, path: &str, handler: fn(HttpRequest, &Context) -> HttpResponse) {
         self.register(HttpRequestMethod::PATCH, path, handler);
     }
 
-    pub fn put(&mut self, path: &str, handler: fn(HttpRequest) -> HttpResponse) {
+    pub fn put(&mut self, path: &str, handler: fn(HttpRequest, &Context) -> HttpResponse) {
         self.register(HttpRequestMethod::PUT, path, handler);
     }
 
-    pub fn options(&mut self, path: &str, handler: fn(HttpRequest) -> HttpResponse) {
+    pub fn options(&mut self, path: &str, handler: fn(HttpRequest, &Context) -> HttpResponse) {
         self.register(HttpRequestMethod::OPTIONS, path, handler);
     }
 
-    pub fn delete(&mut self, path: &str, handler: fn(HttpRequest) -> HttpResponse) {
+    pub fn delete(&mut self, path: &str, handler: fn(HttpRequest, &Context) -> HttpResponse) {
         self.register(HttpRequestMethod::DELETE, path, handler);
     }
 
@@ -46,7 +46,7 @@ impl HttpRouter {
         &mut self,
         method: HttpRequestMethod,
         path: &str,
-        handler: fn(HttpRequest) -> HttpResponse,
+        handler: fn(HttpRequest, &Context) -> HttpResponse
     ) {
         let key = String::from(path.trim());
         let mut path_params = Vec::new();
@@ -71,7 +71,7 @@ impl HttpRouter {
                     path_regex.push_str("/");
                     if param.1.starts_with("{") && param.1.ends_with("}") {
                         path_params.push((param.0, param.1.strip_prefix("{").unwrap().strip_suffix("}").unwrap().to_string()));
-                        path_regex.push_str(r"([a-zA-Z_\-0-9]+)");
+                        path_regex.push_str(r"([a-zA-Z_\-0-9\.]+)");
                     } else {
                         path_regex.push_str(param.1.as_str());
                     }
@@ -97,7 +97,7 @@ impl HttpRouter {
         }
     }
 
-    pub fn get_handler(&self, req: &HttpRequest) -> Option<&fn(HttpRequest) -> HttpResponse> {
+    pub fn get_handler(&self, req: &HttpRequest) -> Option<&fn(HttpRequest, &Context) -> HttpResponse> {
         match self.routes.get(&req.target) {
             Some(route) => {
                 route.handlers.get(&req.method)
@@ -126,12 +126,12 @@ impl HttpRouter {
 
 #[derive(Debug)]
 pub struct Route {
-    handlers: HashMap<HttpRequestMethod, fn(HttpRequest) -> HttpResponse>,
+    handlers: HashMap<HttpRequestMethod, fn(HttpRequest, &Context) -> HttpResponse>,
     path_params: Vec<(usize, String)>,
 }
 
 impl Route {
-    pub fn new(method: HttpRequestMethod, handler: fn(HttpRequest) -> HttpResponse) -> Self {
+    pub fn new(method: HttpRequestMethod, handler: fn(HttpRequest, &Context) -> HttpResponse) -> Self {
         let mut handlers = HashMap::new();
         handlers.insert(method, handler);
         Self { 

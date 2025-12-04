@@ -1,64 +1,35 @@
 pub mod core;
 pub mod types;
+pub mod api;
 
-use crate::{
-    core::{router::HttpRouter, server::HttpServer, logging::Logging}, 
-    types::{response::HttpResponse, status::StatusCode}
-};
+use std::env;
+
+use crate::core::{logging::Logging, router::HttpRouter, server::{Context, HttpServer}};
 
 fn main() {
+
     let mut router = HttpRouter::new();
-    router.get("/", |_req| {
-        HttpResponse::builder()
-            .status_code(StatusCode::Ok)
-            .build()
-    });
 
-    router.get("/user-agent", |req| {
-        let user_agent = req.headers.get("User-Agent").expect("No user agent header found");
-        HttpResponse::builder()
-            .status_code(StatusCode::Ok)
-            .body(user_agent.to_string())
-            .header("Content-Type", "text/plain")
-            .build()
-    });
-
-    router.get("/echo/{str}", |req| {
-        let str = req.path_params.get("str").unwrap().trim().to_string();
-        HttpResponse::builder()
-            .status_code(StatusCode::Ok)
-            .body(str)
-            .header("Content-Type", "text/plain")
-            .build()
-    });
-
-    router.get("/echo/{name}/{age}", |req| {
-        let name = req.path_params.get("name").unwrap().clone();
-        let age = req.path_params.get("age").unwrap().clone();
-        let mut body = String::from("{\"name\": \"");
-        body.push_str(format!("{}", name).as_str());
-        body.push_str("\", \"age\":\"");
-        body.push_str(format!("{}", age).as_str());
-        body.push_str("\"}");
-
-        HttpResponse::builder()
-            .status_code(StatusCode::Ok)
-            .body(body)
-            .header("Content-Type", "text/plain")
-            .build()
-    });
-
-    // dbg!(&router);
-
-    // router.post("/api/v1", |_req| {
-    //     HttpResponse::builder()
-    //         .status_code(StatusCode::Ok)
-    //         .body("{\"message\":\"Hello World!\"}".to_string())
-    //         .header("Content-Type", "application/json")
-    //         .build()
-    // });
+    router.get("/",api::index);
+    router.get("/user-agent", api::user_agent);
+    router.get("/echo/{str}", api::get_str);
+    router.get("/files/{filename}", api::get_file);
 
     let mut server = HttpServer::new(router);
+
+    let mut workdir = String::new();
+
+    let args: Vec<String> = env::args()
+        .map(|x| x.to_string())
+        .collect();
+
+    if args.len() > 2 && args.get(1).unwrap().eq("--directory") {
+        workdir = args.get(2).unwrap().to_string();
+    }
+
+    server.set_context(Context { workdir });
     server.enable_logging();
+
+    // dbg!(&server);
     server.listen(4221);
 }
