@@ -8,6 +8,15 @@ use crate::core::{logging::Logging, router::HttpRouter, server::{Context, HttpSe
 
 fn main() {
 
+    let mut workdir = String::new();
+    let args: Vec<String> = env::args()
+        .map(|x| x.to_string())
+        .collect();
+
+    if args.len() > 2 && args.get(1).unwrap().eq("--directory") {
+        workdir = args.get(2).unwrap().to_string();
+    }
+
     let mut router = HttpRouter::new();
 
     router.get("/",api::index);
@@ -17,17 +26,6 @@ fn main() {
     router.post("/files/{filename}", api::create_file);
 
     let mut server = HttpServer::new(router);
-
-    let mut workdir = String::new();
-
-    let args: Vec<String> = env::args()
-        .map(|x| x.to_string())
-        .collect();
-
-    if args.len() > 2 && args.get(1).unwrap().eq("--directory") {
-        workdir = args.get(2).unwrap().to_string();
-    }
-
     server.set_context(Context { workdir });
     server.enable_logging();
 

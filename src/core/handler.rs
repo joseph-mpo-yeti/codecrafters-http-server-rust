@@ -33,7 +33,7 @@ impl HttpRequestHandler {
                 let response = HttpResponse::builder()
                     .status_code(crate::types::status::StatusCode::BadRequest)
                     .build();
-                self.write_and_close(socket, &response).unwrap();
+                self.write_and_close(socket, &response).unwrap_or_default();
                 // println!("-- Bad Request");
                 return Ok(());
             }

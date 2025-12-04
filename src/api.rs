@@ -20,11 +20,23 @@ pub fn user_agent(req: HttpRequest, _ctx: &Context) -> HttpResponse {
 
 pub fn get_str(req: HttpRequest, _ctx: &Context) -> HttpResponse {
     let str = req.path_params.get("str").unwrap().trim().to_string();
-    HttpResponse::builder()
+    let encoding_scheme = if let Some(scheme) = req.headers.get("Accept-Encoding"){
+        scheme.clone()
+    } else {
+        String::new()
+    };
+
+    let mut response_builder = HttpResponse::builder()
         .status_code(StatusCode::Ok)
         .body(str)
         .header("Content-Type", "text/plain")
-        .build()
+        .to_owned();
+        
+    if !encoding_scheme.is_empty() && encoding_scheme.eq("gzip") {
+        response_builder.header("Content-Encoding", &encoding_scheme);
+    }
+        
+    response_builder.build()
 }
 
 pub fn get_file(req: HttpRequest, ctx: &Context) -> HttpResponse {
