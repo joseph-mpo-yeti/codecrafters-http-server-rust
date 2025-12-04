@@ -2,7 +2,7 @@ use std::{fmt::Debug, sync::Arc};
 
 use super::{handler::HttpRequestHandler, logging::Logging, router::HttpRouter};
 
-use std::net::TcpListener;
+use tokio::net::TcpListener;
 
 #[derive(Debug, Default, Clone)]
 pub struct Context {
@@ -25,11 +25,12 @@ impl HttpServer {
         }
     }
 
-    pub fn listen(&self, port: u32) {
-        let listen = TcpListener::bind(format!("127.0.0.1:{}", port)).unwrap();
+    #[tokio::main]
+    pub async fn listen(&self, port: u32) {
+        let listen = TcpListener::bind(format!("127.0.0.1:{}", port)).await.unwrap();
 
         loop {
-            match listen.accept() {
+            match listen.accept().await {
                 Ok((socket, _)) => {
                     let s_router = self.router.clone();
                     let mut handler = HttpRequestHandler::new(s_router);
@@ -38,8 +39,8 @@ impl HttpServer {
                         handler.enable_logging();
                     }
                     let ctx = self.context.clone();
-                    std::thread::spawn(move || {
-                        let _ = handler.handle_incoming_request(socket, &ctx);
+                    tokio::spawn(async move {
+                        let _ = handler.handle_incoming_request(socket, &ctx).await;
                     });
                 }
                 Err(err) => {

@@ -1,4 +1,5 @@
 use regex::Regex;
+use tokio::io::AsyncReadExt;
 
 use crate::core::logging::Logging;
 
@@ -6,8 +7,7 @@ use crate::core::router::HttpRouter;
 use crate::types::method::*;
 use crate::types::request::*;
 
-use std::io::Read;
-use std::net::TcpStream;
+use tokio::net::TcpStream;
 use std::sync::Arc;
 use std::{collections::HashMap, io::Error};
 
@@ -22,7 +22,7 @@ impl Parser {
         }
     }
 
-    pub fn parse_http_request(
+    pub async fn parse_http_request(
         &self,
         socket: &mut TcpStream,
         router: Arc<HttpRouter>,
@@ -30,7 +30,7 @@ impl Parser {
         let mut request_content = String::new();
         let mut buf = [0u8; 1024];
         loop {
-            match socket.read(&mut buf) {
+            match socket.read(&mut buf).await {
                 Ok(size) => {
                     if size > 0 {
                         let st = std::str::from_utf8(&buf[0..size]).unwrap();
@@ -84,7 +84,7 @@ impl Parser {
                 // println!("parsed-headers: {req_headers:?}");
 
                 let headers = self.parse_headers(lines);
-                let body = self.parse_request_body(socket, req, &headers);
+                let body = self.parse_request_body(socket, req, &headers).await;
                 let path_params = self.parse_path_params(&request_line.1, router.as_ref());
                 // dbg!(&path_params);
 
@@ -142,7 +142,7 @@ impl Parser {
         headers
     }
 
-    fn parse_request_body(
+    async fn parse_request_body(
         &self,
         socket: &mut TcpStream,
         req: Vec<&str>,
@@ -165,7 +165,7 @@ impl Parser {
             let mut buf = [0u8; 1024];
 
             while (req_body.len() as u32) < content_length {
-                match socket.read(&mut buf) {
+                match socket.read(&mut buf).await {
                     Ok(c) => {
                         let st = std::str::from_utf8(&buf[0..c]).unwrap();
                         req_body.push_str(st);

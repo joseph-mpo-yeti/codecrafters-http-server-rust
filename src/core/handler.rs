@@ -9,8 +9,9 @@ use crate::types::request::HttpRequest;
 use crate::types::response::HttpResponse;
 
 use std::collections::HashSet;
-use std::io::{BufReader, Write, copy};
-use std::net::TcpStream;
+use std::io::{BufReader, copy};
+use tokio::net::TcpStream;
+use tokio::io::AsyncWriteExt;
 use std::{io::Error, sync::Arc};
 
 pub struct HttpRequestHandler {
@@ -28,7 +29,7 @@ impl HttpRequestHandler {
         }
     }
 
-    pub fn handle_incoming_request(
+    pub async fn handle_incoming_request(
         &self,
         mut socket: TcpStream,
         ctx: &Context,
@@ -37,7 +38,7 @@ impl HttpRequestHandler {
 
         loop {
             let start = std::time::Instant::now();
-            let parse_result = parser.parse_http_request(&mut socket, self.router.clone());
+            let parse_result = parser.parse_http_request(&mut socket, self.router.clone()).await;
 
             let request = match parse_result {
                 Ok(request) => request,
@@ -46,8 +47,7 @@ impl HttpRequestHandler {
                     let response = HttpResponse::builder()
                         .status_code(crate::types::status::StatusCode::BadRequest)
                         .build();
-                    self.write_and_close(&mut socket, None, &response)
-                        .unwrap_or_default();
+                    self.write_and_close(&mut socket, None, &response).await?;
                     // println!("-- Bad Request");
                     return Ok(());
                 }
@@ -114,12 +114,11 @@ impl HttpRequestHandler {
             let r = request.clone();
             if let Some(close) = r.headers.get("Connection") {
                 if close.eq_ignore_ascii_case("close") {
-                    self.write_and_close(&mut socket, Some(&r), &response)
-                        .unwrap();
+                    self.write_and_close(&mut socket, Some(&r), &response).await?;
                     break;
                 }
             } else {
-                self.write(&mut socket, Some(&r), &response).unwrap();
+                self.write(&mut socket, Some(&r), &response).await?;
             }
 
             let elapsed = start.elapsed();
@@ -142,7 +141,7 @@ impl HttpRequestHandler {
         Ok(())
     }
 
-    pub fn write_and_close(
+    pub async fn write_and_close(
         &self,
         socket: &mut TcpStream,
         request: Option<&HttpRequest>,
@@ -154,17 +153,17 @@ impl HttpRequestHandler {
             // println!("Response: {:?}", http_response);
         }
 
-        socket.write_all(http_response.as_bytes())?;
+        socket.write_all(http_response.as_bytes()).await?;
         if response.encoded.len() > 0 {
-            socket.write(&response.encoded)?;
+            socket.write(&response.encoded).await?;
         }
-        socket.flush()?;
-        socket.shutdown(std::net::Shutdown::Both)?;
+        socket.flush().await?;
+        socket.shutdown().await?;
 
         Ok(())
     }
 
-    pub fn write(
+    pub async fn write(
         &self,
         socket: &mut TcpStream,
         request: Option<&HttpRequest>,
@@ -175,11 +174,11 @@ impl HttpRequestHandler {
         if self.logging_enabled() {
             // println!("Response: {:?}", http_response);
         }
-        socket.write_all(http_response.as_bytes())?;
+        socket.write_all(http_response.as_bytes()).await?;
         if response.encoded.len() > 0 {
-            socket.write(&response.encoded)?;
+            socket.write(&response.encoded).await?;
         }
-        socket.flush()?;
+        socket.flush().await?;
 
         Ok(())
     }
