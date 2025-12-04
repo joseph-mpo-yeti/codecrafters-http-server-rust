@@ -31,9 +31,9 @@ impl HttpServer {
                     if self.logging_enabled() {
                         handler.enable_logging();
                     }
-                    // std::thread::spawn(move || {
+                    std::thread::spawn(move || {
                         let _ = handler.handle_incoming_request(socket);
-                    // });
+                    });
                 }
                 Err(err) => {
                     if self.logging_enabled() {
