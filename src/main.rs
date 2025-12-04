@@ -19,6 +19,7 @@ fn main() {
         HttpResponse::builder()
             .status_code(StatusCode::Ok)
             .body(user_agent.to_string())
+            .header("Content-Type", "text/plain")
             .build()
     });
 
