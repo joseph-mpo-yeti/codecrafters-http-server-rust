@@ -28,7 +28,7 @@ impl HttpRequest {
             version,
             headers,
             body,
-            path_params
+            path_params,
         }
     }
 }

@@ -10,13 +10,13 @@ use crate::types::response::HttpResponse;
 
 use std::collections::HashSet;
 use std::io::{BufReader, Write, copy};
+use std::net::TcpStream;
 use std::{io::Error, sync::Arc};
-use std::net::{TcpStream};
 
 pub struct HttpRequestHandler {
     logging_enabled: bool,
     router: Arc<HttpRouter>,
-    enconding_schemes: HashSet<String>
+    enconding_schemes: HashSet<String>,
 }
 
 impl HttpRequestHandler {
@@ -24,11 +24,15 @@ impl HttpRequestHandler {
         Self {
             logging_enabled: false,
             router: router,
-            enconding_schemes: HashSet::from([String::from("gzip")])
+            enconding_schemes: HashSet::from([String::from("gzip")]),
         }
     }
 
-    pub fn handle_incoming_request(&self, mut socket: TcpStream, ctx: &Context) -> Result<(), Error> {
+    pub fn handle_incoming_request(
+        &self,
+        mut socket: TcpStream,
+        ctx: &Context,
+    ) -> Result<(), Error> {
         let parser = Parser::new();
 
         loop {
@@ -42,7 +46,8 @@ impl HttpRequestHandler {
                     let response = HttpResponse::builder()
                         .status_code(crate::types::status::StatusCode::BadRequest)
                         .build();
-                    self.write_and_close(&mut socket, None, &response).unwrap_or_default();
+                    self.write_and_close(&mut socket, None, &response)
+                        .unwrap_or_default();
                     // println!("-- Bad Request");
                     return Ok(());
                 }
@@ -67,14 +72,15 @@ impl HttpRequestHandler {
             let r = request.clone();
             let response = match router.get_handler(&r) {
                 Some(handler) => {
-                    let encoding_schemes = if let Some(scheme) = r.headers.get("Accept-Encoding"){
+                    let encoding_schemes = if let Some(scheme) = r.headers.get("Accept-Encoding") {
                         scheme.split(",").collect()
                     } else {
                         Vec::new()
                     };
 
-                    let schemes: Vec<String> = encoding_schemes.iter()
-                        .map(|m|m.trim().to_string())
+                    let schemes: Vec<String> = encoding_schemes
+                        .iter()
+                        .map(|m| m.trim().to_string())
                         .filter(|scheme| self.enconding_schemes.contains(&scheme.to_lowercase()))
                         .collect();
 
@@ -82,31 +88,34 @@ impl HttpRequestHandler {
 
                     if !schemes.is_empty() {
                         let scheme = schemes.get(0).unwrap();
-                        res.headers.insert("Content-Encoding".to_string(), scheme.to_owned());
+                        res.headers
+                            .insert("Content-Encoding".to_string(), scheme.to_owned());
                         match scheme.as_str() {
                             "gzip" => {
-                                let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+                                let mut encoder =
+                                    GzEncoder::new(Vec::new(), Compression::default());
                                 let mut reader = BufReader::new(res.body.as_bytes());
                                 copy(&mut reader, &mut encoder).unwrap();
                                 let encoded_body = encoder.finish().unwrap_or_default();
                                 res.encoded = encoded_body;
                                 res.body.clear();
-                            },
+                            }
                             _ => {}
                         }
                     }
 
                     res
-                },
+                }
                 _ => HttpResponse::builder()
-                        .status_code(crate::types::status::StatusCode::NotFound)
-                        .build(),
+                    .status_code(crate::types::status::StatusCode::NotFound)
+                    .build(),
             };
 
             let r = request.clone();
             if let Some(close) = r.headers.get("Connection") {
                 if close.eq_ignore_ascii_case("close") {
-                    self.write_and_close(&mut socket, Some(&r), &response).unwrap();
+                    self.write_and_close(&mut socket, Some(&r), &response)
+                        .unwrap();
                     break;
                 }
             } else {
@@ -185,8 +194,7 @@ impl HttpRequestHandler {
         }
 
         if response.body.len() > 0 {
-            http_response
-                .push_str(format!("Content-Length: {}\r\n", response.body.len()).as_str());
+            http_response.push_str(format!("Content-Length: {}\r\n", response.body.len()).as_str());
         } else if response.encoded.len() > 0 {
             http_response
                 .push_str(format!("Content-Length: {}\r\n", response.encoded.len()).as_str());
@@ -199,7 +207,7 @@ impl HttpRequestHandler {
                 }
             }
         }
-        
+
         http_response.push_str("\r\n");
 
         if response.body.len() > 0 {
@@ -212,7 +220,6 @@ impl HttpRequestHandler {
     pub fn add_encoding_scheme(&mut self, scheme: &str) {
         self.enconding_schemes.insert(scheme.to_string());
     }
-
 }
 
 impl Logging for HttpRequestHandler {

@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use regex::Regex;
+use std::collections::HashMap;
 
 use crate::core::server::Context;
 use crate::types::method::*;
@@ -46,12 +46,13 @@ impl HttpRouter {
         &mut self,
         method: HttpRequestMethod,
         path: &str,
-        handler: fn(HttpRequest, &Context) -> HttpResponse
+        handler: fn(HttpRequest, &Context) -> HttpResponse,
     ) {
         let key = String::from(path.trim());
         let mut path_params = Vec::new();
 
-        let parts: Vec<(usize, String)> =  key.split("/")
+        let parts: Vec<(usize, String)> = key
+            .split("/")
             .enumerate()
             .map(|(index, str)| (index, str.to_string()))
             .filter(|(_, str)| !str.is_empty())
@@ -60,7 +61,7 @@ impl HttpRouter {
         let mut path_regex = String::from("");
         if !parts.is_empty() {
             let mut has_params = false;
-            for param in &parts { 
+            for param in &parts {
                 if param.1.starts_with("{") && param.1.ends_with("}") {
                     has_params = true;
                     break;
@@ -70,7 +71,16 @@ impl HttpRouter {
                 for param in parts {
                     path_regex.push_str("/");
                     if param.1.starts_with("{") && param.1.ends_with("}") {
-                        path_params.push((param.0, param.1.strip_prefix("{").unwrap().strip_suffix("}").unwrap().to_string()));
+                        path_params.push((
+                            param.0,
+                            param
+                                .1
+                                .strip_prefix("{")
+                                .unwrap()
+                                .strip_suffix("}")
+                                .unwrap()
+                                .to_string(),
+                        ));
                         path_regex.push_str(r"([a-zA-Z_\-0-9\.]+)");
                     } else {
                         path_regex.push_str(param.1.as_str());
@@ -80,7 +90,7 @@ impl HttpRouter {
                 path_regex.push_str("$");
             }
         }
-        
+
         // dbg!(&path_params);
         // dbg!(&path_regex);
         if path_regex.is_empty() {
@@ -92,7 +102,7 @@ impl HttpRouter {
                 None => {
                     let mut route = Route::new(method, handler);
                     route.path_params = path_params;
-                    self.routes.insert( key, route);
+                    self.routes.insert(key, route);
                 }
             }
         } else {
@@ -104,18 +114,18 @@ impl HttpRouter {
                 None => {
                     let mut route = Route::new(method, handler);
                     route.path_params = path_params;
-                    self.routes.insert( path_regex, route);
+                    self.routes.insert(path_regex, route);
                 }
             }
         }
-        
     }
 
-    pub fn get_handler(&self, req: &HttpRequest) -> Option<&fn(HttpRequest, &Context) -> HttpResponse> {
+    pub fn get_handler(
+        &self,
+        req: &HttpRequest,
+    ) -> Option<&fn(HttpRequest, &Context) -> HttpResponse> {
         match self.routes.get(&req.target) {
-            Some(route) => {
-                route.handlers.get(&req.method)
-            },
+            Some(route) => route.handlers.get(&req.method),
             None => {
                 for (path, route) in &self.routes {
                     if route.path_params.is_empty() {
@@ -145,10 +155,13 @@ pub struct Route {
 }
 
 impl Route {
-    pub fn new(method: HttpRequestMethod, handler: fn(HttpRequest, &Context) -> HttpResponse) -> Self {
+    pub fn new(
+        method: HttpRequestMethod,
+        handler: fn(HttpRequest, &Context) -> HttpResponse,
+    ) -> Self {
         let mut handlers = HashMap::new();
         handlers.insert(method, handler);
-        Self { 
+        Self {
             handlers,
             path_params: Vec::new(),
         }

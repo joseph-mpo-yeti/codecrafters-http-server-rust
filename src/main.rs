@@ -1,17 +1,18 @@
+pub mod api;
 pub mod core;
 pub mod types;
-pub mod api;
 
 use std::env;
 
-use crate::core::{logging::Logging, router::HttpRouter, server::{Context, HttpServer}};
+use crate::core::{
+    logging::Logging,
+    router::HttpRouter,
+    server::{Context, HttpServer},
+};
 
 fn main() {
-
     let mut workdir = String::new();
-    let args: Vec<String> = env::args()
-        .map(|x| x.to_string())
-        .collect();
+    let args: Vec<String> = env::args().map(|x| x.to_string()).collect();
 
     if args.len() > 2 && args.get(1).unwrap().eq("--directory") {
         workdir = args.get(2).unwrap().to_string();
@@ -19,7 +20,7 @@ fn main() {
 
     let mut router = HttpRouter::new();
 
-    router.get("/",api::index);
+    router.get("/", api::index);
     router.get("/user-agent", api::user_agent);
     router.get("/echo/{str}", api::get_str);
     router.get("/files/{filename}", api::get_file);

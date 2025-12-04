@@ -7,9 +7,9 @@ use crate::types::method::*;
 use crate::types::request::*;
 
 use std::io::Read;
+use std::net::TcpStream;
 use std::sync::Arc;
 use std::{collections::HashMap, io::Error};
-use std::net::TcpStream;
 
 pub struct Parser {
     logging_enabled: bool,
@@ -22,7 +22,11 @@ impl Parser {
         }
     }
 
-    pub fn parse_http_request(&self, socket: &mut TcpStream, router: Arc<HttpRouter>) -> Result<HttpRequest, Error> {
+    pub fn parse_http_request(
+        &self,
+        socket: &mut TcpStream,
+        router: Arc<HttpRouter>,
+    ) -> Result<HttpRequest, Error> {
         let mut request_content = String::new();
         let mut buf = [0u8; 1024];
         loop {
@@ -122,11 +126,7 @@ impl Parser {
 
         let version = String::from(*collect.get(2).unwrap_or(&""));
 
-        RequestLine(
-            method,
-            target,
-            version,
-        )
+        RequestLine(method, target, version)
     }
 
     fn parse_headers(&self, lines: std::str::Lines<'_>) -> HashMap<String, String> {
@@ -200,18 +200,21 @@ impl Parser {
             let reg = Regex::new(path.as_str()).unwrap();
             if reg.is_match(&target) {
                 // println!("found a match for {} : {}", target, path);
-                let tokens: Vec<String> = target.split("/").filter(|x| !x.is_empty()).map(|x| x.to_string()).collect();
+                let tokens: Vec<String> = target
+                    .split("/")
+                    .filter(|x| !x.is_empty())
+                    .map(|x| x.to_string())
+                    .collect();
                 // dbg!(&tokens);
                 for (index, param) in route.get_path_params() {
                     // println!("index: {}, key: {}", index, param);
-                    params.insert(param.clone(), tokens.get(*index-1).unwrap().clone());
+                    params.insert(param.clone(), tokens.get(*index - 1).unwrap().clone());
                 }
             }
         }
 
         params
     }
-
 }
 
 impl Logging for Parser {
