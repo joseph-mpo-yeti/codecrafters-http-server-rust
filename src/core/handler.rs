@@ -47,7 +47,7 @@ impl HttpRequestHandler {
                     let response = HttpResponse::builder()
                         .status_code(crate::types::status::StatusCode::BadRequest)
                         .build();
-                    self.write_and_close(&mut socket, None, &response).await?;
+                    self.write_response(&mut socket, None, &response, true).await?;
                     // println!("-- Bad Request");
                     return Ok(());
                 }
@@ -114,11 +114,11 @@ impl HttpRequestHandler {
             let r = request.clone();
             if let Some(close) = r.headers.get("Connection") {
                 if close.eq_ignore_ascii_case("close") {
-                    self.write_and_close(&mut socket, Some(&r), &response).await?;
+                    self.write_response(&mut socket, Some(&r), &response, true).await?;
                     break;
                 }
             } else {
-                self.write(&mut socket, Some(&r), &response).await?;
+                self.write_response(&mut socket, Some(&r), &response, false).await?;
             }
 
             let elapsed = start.elapsed();
@@ -141,11 +141,12 @@ impl HttpRequestHandler {
         Ok(())
     }
 
-    pub async fn write_and_close(
+    pub async fn write_response(
         &self,
         socket: &mut TcpStream,
         request: Option<&HttpRequest>,
         response: &HttpResponse,
+        close_socket: bool,
     ) -> Result<(), Error> {
         let http_response = self.get_response_str(request, response);
 
@@ -158,27 +159,10 @@ impl HttpRequestHandler {
             socket.write(&response.encoded).await?;
         }
         socket.flush().await?;
-        socket.shutdown().await?;
 
-        Ok(())
-    }
-
-    pub async fn write(
-        &self,
-        socket: &mut TcpStream,
-        request: Option<&HttpRequest>,
-        response: &HttpResponse,
-    ) -> Result<(), Error> {
-        let http_response = self.get_response_str(request, response);
-
-        if self.logging_enabled() {
-            // println!("Response: {:?}", http_response);
+        if close_socket {
+            socket.shutdown().await?;
         }
-        socket.write_all(http_response.as_bytes()).await?;
-        if response.encoded.len() > 0 {
-            socket.write(&response.encoded).await?;
-        }
-        socket.flush().await?;
 
         Ok(())
     }

@@ -133,8 +133,8 @@ impl Parser {
         let mut headers = HashMap::new();
         for l in lines {
             let header: Vec<&str> = l.split(':').collect();
-            let key = self.get_str(header.get(0));
-            let value = self.get_str(header.get(1));
+            let key = header.get(0).unwrap_or(&"").to_string();
+            let value = header.get(1).unwrap_or(&"").to_string();
             if !key.is_empty() && !value.is_empty() {
                 headers.insert(key, value);
             }
@@ -180,13 +180,6 @@ impl Parser {
             req_body
         } else {
             String::new()
-        }
-    }
-
-    fn get_str(&self, opt: Option<&&str>) -> String {
-        match opt {
-            Some(v) => String::from(v.trim()),
-            None => String::new(),
         }
     }
 
